@@ -43,10 +43,16 @@ class SiteController extends Controller
     {
         $formInput = Yii::$app->request->post('DynamicModel', false);
         $addressToSearch = strip_tags(trim($formInput['address']));
+        $addressValid = true;
+        if (!preg_match("/^[a-zA-ZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ\-\.\,\s\d]+$/", $addressToSearch)) {
+            // пришлось написать именно такую регулярку, т.к. а-яА-Я не отрабатывал корректно
+            $addressValid = false;
+        }
 
         $kladrOutput = false;
+        $bestResult = false;
 
-        if ($addressToSearch) {
+        if ($addressToSearch && $addressValid) {
             $api = new \Kladr\Api('51dfe5d42fb2b43e3300006e', '86a2c2a06f1b2451a87d05512cc2c3edfdf41969');
             $query = new \Kladr\Query();
             $query->ContentName = $addressToSearch;
@@ -64,12 +70,13 @@ class SiteController extends Controller
                 $historyRecord->save(false);
                 unset($historyRecord);
             }
+
+            $bestResult = $kladrOutput[0];
         }
 
         $recentQueries = $this->getRecentQueries();
-        $bestResult = $kladrOutput[0];
 
-        return $this->renderAjax('search', compact('recentQueries', 'bestResult'));
+        return $this->renderAjax('search', compact('recentQueries', 'bestResult', 'addressValid'));
     }
 
     public function actionDetails($id)
@@ -86,7 +93,7 @@ class SiteController extends Controller
             ->from('`search_history` AS `search_entries`')
             ->leftJoin('`search_history` AS `search_counts`', '`search_entries`.`md5text` = `search_counts`.`md5text`')
             ->groupBy('`search_entries`.`md5text`')
-            ->orderBy('`search_entries`.`time` DESC, `search_entries`.`fulltext` ASC')
+            ->orderBy('`time` DESC, `search_entries`.`fulltext` ASC')
             ->limit(5)
             ->all();
     }

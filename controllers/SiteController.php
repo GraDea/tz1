@@ -42,7 +42,7 @@ class SiteController extends Controller
     public function actionSearch()
     {
         $formInput = Yii::$app->request->post('DynamicModel', false);
-        $addressToSearch = $formInput['address'];
+        $addressToSearch = strip_tags(trim($formInput['address']));
 
         $kladrOutput = false;
 
